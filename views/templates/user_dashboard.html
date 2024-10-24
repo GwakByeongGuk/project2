@@ -4,35 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>모든 방문자 목록</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: #f8f8f8;
+            background-color: #f0f2f5;
         }
         h1 {
             color: #333;
+            text-align: center;
+            margin-bottom: 30px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         th, td {
-            padding: 10px;
-            border: 1px solid #ddd;
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
             text-align: center;
         }
         th {
-            background-color: #f4f4f4;
+            background-color: #4CAF50;
+            color: #ffffff;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
         }
         button {
-            padding: 5px 10px;
+            padding: 8px 12px;
+            background-color: #28a745;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
             cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+        button:hover {
+            background-color: #218838;
+            transform: scale(1.05);
+        }
+        button:active {
+            transform: scale(1);
+        }
+        a.home-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            text-decoration: none;
+            color: #4CAF50;
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+        a.home-link:hover {
+            color: #4CAF50;
+        }
+        form {
+            margin-top: 20px;
+            text-align: center;
+        }
+        form button {
+            background-color: #4CAF50;
+        }
+        form button:hover {
+            background-color: #4CAF50;
         }
     </style>
 </head>
 <body>
+<a href="/" class="home-link"><i class="fas fa-home"></i> 홈으로</a>
 <h1>모든 방문자 목록</h1>
 <table>
     <thead>
@@ -54,7 +99,7 @@
         <td>{{ visitor.phone }}</td>
         <td>{{ visitor.ob }}</td>
         <td>{{ visitor.regdate.strftime('%Y-%m-%d %H:%M') }}</td>
-        <td>{{ visitor.status.value }}</td>
+        <td id="visitor-status-{{ visitor.uno }}">{{ visitor.status.value }}</td>
         <td id="exit-cell-{{ visitor.uno }}">
             {% if visitor.status.value == "승인됨" %}
             <button onclick="logExit('{{ visitor.uno }}')">퇴입</button>
@@ -82,14 +127,9 @@
                 } else {
                     alert(data.message || "퇴입에 실패했습니다.");
                 }
-            }).catch(error => {
-            alert("서버와의 통신 중 문제가 발생했습니다.");
-            console.error("Error:", error);
-        });
+            });
     }
 </script>
-
-
 
 </body>
 </html>

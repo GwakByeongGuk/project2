@@ -4,33 +4,89 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>관리자 대시보드</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f7fa;
+    }
+    h1, h2 {
+      color: #2c3e50;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 40px;
+    }
+    h2 {
+      margin-bottom: 20px;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
     th, td {
-      padding: 10px;
+      padding: 15px;
       border: 1px solid #ddd;
       text-align: center;
     }
+    th {
+      background-color: #4CAF50;
+      color: #ffffff;
+    }
+    td {
+      background-color: #ffffff;
+    }
     button {
-      padding: 5px 10px;
-      margin: 2px;
+      padding: 10px;
+      margin: 5px;
       cursor: pointer;
+      background-color: #4CAF50;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #4CAF50;
     }
     nav {
       margin-bottom: 20px;
+      text-align: center;
+    }
+    nav a {
+      margin: 0 15px;
+      text-decoration: none;
+      color: #4CAF50;
+      font-weight: bold;
+      transition: color 0.3s;
+    }
+    nav a:hover {
+      color: #4CAF50;
+    }
+    .home-link {
+      display: inline-block;
+      margin-bottom: 20px;
+      color: #4CAF50;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .home-link:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-<h1>관리자 대시보드</h1>
+<a href="/" class="home-link"><i class="fas fa-home"></i> 홈으로</a>
 <nav>
   <a href="/admin-dashboard">승인 요청</a>
   <a href="/visitor-list">방문자 목록 조회</a>
   <a href="/statistics">통계 페이지</a>
 </nav>
+<h1>관리자 대시보드</h1>
 <h2>방문자 목록 조회</h2>
 <table>
   <thead>
@@ -55,6 +111,6 @@
   </tr>
   {% endfor %}
   </tbody>
-
+</table>
 </body>
 </html>

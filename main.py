@@ -174,17 +174,17 @@ async def statistics_page(request: Request, db: Session = Depends(database.get_d
         hour_visitors[log.entry_time.hour] += 1
 
     # 요일별 방문자 수 그래프 생성
-    weekdays = ['월', '화', '수', '목', '금', '토', '일']
+    weekdays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
     fig, ax = plt.subplots()
     ax.bar(weekdays, weekday_visitors)
-    ax.set_title("요일별 방문자 수")
+    ax.set_title("Number of visitors by day of the week")
     weekday_graph = save_graph_to_base64(fig)
 
     # 시간대별 방문자 수 그래프 생성
     hours = list(range(24))
     fig, ax = plt.subplots()
     ax.bar(hours, hour_visitors)
-    ax.set_title("시간대별 방문자 수")
+    ax.set_title("Number of visitors by time slot")
     hour_graph = save_graph_to_base64(fig)
 
     return templates.TemplateResponse("statistics.html", {
