@@ -20,7 +20,6 @@ app = FastAPI()
 # Jinja2 템플릿 설정
 templates = Jinja2Templates(directory="views/templates")
 
-# 애플리케이션 시작 시 DB 테이블 생성
 @app.on_event("startup")
 def on_startup():
     database.init_db()
@@ -46,6 +45,10 @@ async def admin_login(username2: str = Form(...), password2: str = Form(...), db
         return RedirectResponse(url="/user-dashboard", status_code=303)
 
     return HTMLResponse(content="로그인 실패: 아이디 또는 비밀번호가 잘못되었습니다.", status_code=401)
+
+@app.get("/visitor-register", response_class=HTMLResponse)
+async def visitor_register_page(request: Request):
+    return templates.TemplateResponse("visitor_register.html", {"request": request})
 
 @app.post("/visitor-register")
 async def visitor_register(
