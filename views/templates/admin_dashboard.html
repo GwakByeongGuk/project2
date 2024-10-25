@@ -74,7 +74,42 @@
     .home-link:hover {
       text-decoration: underline;
     }
+    .btn-reject {
+      background-color: #f44336;
+    }
+    .btn-reject:hover {
+      background-color: #e53935;
+    }
   </style>
+  <script>
+    async function handleApproval(visitorId, action) {
+      try {
+        const response = await fetch(`/admin-${action}/${visitorId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        // HTML 형식의 응답을 처리하도록 변경
+        const result = await response.text();
+
+        if (response.ok) {
+          // HTML 형식의 응답을 처리할 수 있는 로직 추가
+          console.log("서버 응답:", result);
+          alert("처리가 성공적으로 완료되었습니다.");
+          document.getElementById(`visitor-${visitorId}`).remove();
+        } else {
+          console.error("처리 중 오류 발생:", result);
+          alert("처리 중 오류가 발생했습니다.");
+        }
+      } catch (error) {
+        console.error("요청 처리 중 오류 발생:", error);
+        alert("요청 처리 중 오류가 발생했습니다.");
+      }
+    }
+
+  </script>
 </head>
 <body>
 <div class="container">
@@ -96,19 +131,15 @@
       <th>승인/거절</th>
     </tr>
     {% for visitor in pending_visitors %}
-    <tr>
+    <tr id="visitor-{{ visitor.uno }}">
       <td>{{ visitor.name }}</td>
       <td>{{ visitor.email }}</td>
       <td>{{ visitor.phone }}</td>
       <td>{{ visitor.regdate.strftime('%Y-%m-%d %H:%M') }}</td>
       <td>{{ visitor.ob }}</td>
       <td>
-        <form action="/admin-approve/{{ visitor.uno }}" method="post" style="display:inline;">
-          <button type="submit">승인</button>
-        </form>
-        <form action="/admin-reject/{{ visitor.uno }}" method="post" style="display:inline;">
-          <button type="submit" style="background-color: #f44336;">거절</button>
-        </form>
+        <button onclick="handleApproval('{{ visitor.uno }}', 'approve')">승인</button>
+        <button class="btn-reject" onclick="handleApproval('{{ visitor.uno }}', 'reject')">거절</button>
       </td>
     </tr>
     {% endfor %}

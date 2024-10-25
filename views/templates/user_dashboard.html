@@ -117,8 +117,22 @@
 <script>
     function logExit(uno) {
         fetch(`/exit/${uno}`, {
-            method: "POST"
-        }).then(response => response.json())
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                admin_id: 1  // 항상 고정된 관리자 ID 사용
+            })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => {
+                        throw new Error(`서버 오류: ${response.status}, 메시지: ${err.detail}`);
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     document.getElementById(`visitor-status-${uno}`).innerHTML = '퇴입';
@@ -127,9 +141,14 @@
                 } else {
                     alert(data.message || "퇴입에 실패했습니다.");
                 }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert(`서버 오류가 발생했습니다: ${error.message}`);
             });
     }
 </script>
+
 
 </body>
 </html>
