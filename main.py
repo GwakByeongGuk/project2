@@ -13,8 +13,7 @@ from app.model import models, database
 from fastapi import HTTPException
 from datetime import datetime
 from app.model.models import User
-
-from app.model.database import SessionLocal
+from app.model.database import get_db
 
 app = FastAPI()
 
@@ -189,14 +188,6 @@ async def log_exit(visitor_id: int, db: Session = Depends(database.get_db)):
     db.commit()
 
     return JSONResponse(content={"success": True, "message": "퇴입 완료!"})
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 @app.post("/admin-approve/{visitor_id}")
 async def approve_visitor(visitor_id: int, db: Session = Depends(get_db)):
     visitor = db.query(User).filter(User.uno == visitor_id).first()
