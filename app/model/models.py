@@ -36,6 +36,7 @@ class EntryExitLog(Base):
     __tablename__ = 'entry_exit_logs'
     no = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String(50), nullable=False)
+    aname = Column(String(50), nullable=True)
     createdAt = Column(DateTime, default=datetime.utcnow, nullable=False)
     entry_time = Column(DateTime, default=datetime.utcnow, nullable=False)
     exit_time = Column(DateTime, nullable=True)

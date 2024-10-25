@@ -1,4 +1,10 @@
 import base64, io
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
+
 from fastapi import FastAPI, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -9,6 +15,9 @@ from starlette.responses import JSONResponse
 from app.model import models, database
 from fastapi import HTTPException
 from datetime import datetime
+from app.model.models import User, EntryExitLog
+
+from app.model.database import SessionLocal
 
 app = FastAPI()
 
@@ -96,30 +105,6 @@ async def user_dashboard(user_id: int, request: Request, db: Session = Depends(d
 
     return templates.TemplateResponse("user_dashboard.html", {"request": request, "visitor": visitor})
 
-@app.post("/admin-approve/{visitor_id}")
-async def admin_approve(visitor_id: int, db: Session = Depends(database.get_db)):
-    visitor = db.query(models.User).filter(models.User.uno == visitor_id).first()
-
-    if not visitor:
-        return {"error": "방문자를 찾을 수 없습니다."}
-
-    if visitor.status == models.Status.APPROVED:
-        return {"error": "이미 승인된 기록이 있습니다."}
-
-    visitor.status = models.Status.APPROVED
-    db.commit()
-
-    # 방문자 출입 기록 추가
-    new_log = models.EntryExitLog(
-        name=visitor.name,
-        createdAt=datetime.now(),
-        entry_time=datetime.now()
-    )
-    db.add(new_log)
-    db.commit()
-
-    return RedirectResponse(url="/admin-dashboard", status_code=303)
-
 @app.post("/admin-reject/{uno}")
 async def admin_reject(uno: int, db: Session = Depends(database.get_db)):
     visitor = db.query(models.User).filter(models.User.uno == uno).first()
@@ -206,25 +191,89 @@ def save_graph_to_base64(fig):
 
 @app.post("/exit/{visitor_id}")
 async def log_exit(visitor_id: int, db: Session = Depends(database.get_db)):
+    print(f"[DEBUG] /exit/{visitor_id} 호출됨")
+
     visitor = db.query(models.User).filter(models.User.uno == visitor_id).first()
     if not visitor:
-        return {"error": "방문자를 찾을 수 없습니다."}
+        print("[DEBUG] 방문자를 찾을 수 없습니다.")
+        raise HTTPException(status_code=404, detail="방문자를 찾을 수 없습니다.")
 
-    log = db.query(models.EntryExitLog).filter(models.EntryExitLog.name == visitor.name).order_by(models.EntryExitLog.no.desc()).first()
+    admin = db.query(models.Admin).filter(models.Admin.ano == 1).first()
+    if not admin:
+        print("[DEBUG] 관리자를 찾을 수 없습니다.")
+        raise HTTPException(status_code=404, detail="관리자를 찾을 수 없습니다.")
 
-    if not log:
-        return {"error": "방문 기록을 찾을 수 없습니다."}
-
-    if log.exit_time:
-        return {"error": "이미 퇴입된 기록입니다."}
-
-    log.exit_time = datetime.now()
+    new_log = models.EntryExitLog(
+        name=visitor.name,
+        aname=admin.aname,
+        createdAt=datetime.now(),
+        entry_time=visitor.regdate,
+        exit_time=datetime.now()
+    )
+    db.add(new_log)
     db.commit()
 
     visitor.status = models.Status.EXIT
     db.commit()
 
+    print("[DEBUG] 퇴입 처리 완료")
     return JSONResponse(content={"success": True, "message": "퇴입 완료!"})
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+@app.post("/admin-approve/{visitor_id}")
+async def approve_visitor(visitor_id: int, db: Session = Depends(get_db)):
+    visitor = db.query(User).filter(User.uno == visitor_id).first()
+    if visitor:
+        visitor.status = "APPROVED"
+        db.commit()
+
+        send_approval_email_sync(visitor.email)
+        print(f"[DEBUG] 이메일 전송 완료")
+
+        return JSONResponse(content={"message": "승인되었습니다."}, status_code=200)
+    else:
+        print("[DEBUG] 방문자를 찾을 수 없습니다.")
+        return JSONResponse(content={"message": "방문자를 찾을 수 없습니다."}, status_code=404)
+
+def send_approval_email_sync(receiver_email):
+    print('=>', 'hello')
+    sender_email = "teereal@naver.com"
+    sender_password = "WEDVPB9ZUMJF"
+
+    print(f"[DEBUG] 이메일 전송 함수 호출됨: 수신자 이메일 - {receiver_email}")
+
+    subject = "승인 요청이 승인되었습니다"
+    body = "당신의 방문 요청이 승인되었습니다. 감사합니다."
+
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        print(f"[DEBUG] SMTP 서버에 연결 시도 중...")
+        server = smtplib.SMTP_SSL('smtp.naver.com', 465)
+        server.login(sender_email, sender_password)
+        print(f"[DEBUG] SMTP 로그인 성공. 이메일 전송 시도 중...")
+        server.sendmail(sender_email, receiver_email, msg.as_string())
+        server.quit()
+        print("이메일이 성공적으로 전송되었습니다.")
+    except smtplib.SMTPAuthenticationError as auth_error:
+        print(f"SMTP 인증 오류 발생: {auth_error}")
+    except smtplib.SMTPConnectError as connect_error:
+        print(f"SMTP 연결 오류 발생: {connect_error}")
+    except smtplib.SMTPException as smtp_error:
+        print(f"SMTP 오류 발생: {smtp_error}")
+    except Exception as e:
+        print(f"일반 오류 발생: {e}")
+
 
 if __name__ == "__main__":
     import uvicorn

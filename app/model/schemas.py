@@ -38,6 +38,7 @@ class Admin(AdminBase):
 class EntryExitLogBase(BaseModel):
     name: str
     createdAt: datetime
+    aname: Optional[str] = None
     entry_time: datetime
     exit_time: Optional[datetime] = None
 
