@@ -2,9 +2,6 @@ import base64, io
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from concurrent.futures import ThreadPoolExecutor
-import asyncio
-
 from fastapi import FastAPI, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -15,7 +12,7 @@ from starlette.responses import JSONResponse
 from app.model import models, database
 from fastapi import HTTPException
 from datetime import datetime
-from app.model.models import User, EntryExitLog
+from app.model.models import User
 
 from app.model.database import SessionLocal
 
@@ -33,22 +30,8 @@ def on_startup():
 async def read_main(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-
-@app.post("/approve-entry")
-async def approve_entry(log_id: int = Form(...), db: Session = Depends(database.get_db)):
-    # 해당 입출입 기록을 조회
-    log = db.query(models.EntryExitLog).filter(models.EntryExitLog.no == log_id).first()
-    if not log:
-        raise HTTPException(status_code=404, detail="기록을 찾을 수 없습니다.")
-
-    log.exit_time = datetime.utcnow()
-    db.commit()
-    db.refresh(log)
-
-    return RedirectResponse(url="/dashboard", status_code=303)
-
 @app.post("/admin-login")
-async def admin_login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(database.get_db)):
+async def admin_login(username: str = Form(...), password: str = Form(...), db: Session = Depends(database.get_db)):
     admin = db.query(models.Admin).filter(models.Admin.id == username).first()
 
     if admin and admin.passwd == password:
@@ -57,17 +40,13 @@ async def admin_login(request: Request, username: str = Form(...), password: str
     return HTMLResponse(content="로그인 실패: 아이디 또는 비밀번호가 잘못되었습니다.", status_code=401)
 
 @app.post("/approve-login")
-async def admin_login(request: Request, username2: str = Form(...), password2: str = Form(...), db: Session = Depends(database.get_db)):
+async def admin_login(username2: str = Form(...), password2: str = Form(...), db: Session = Depends(database.get_db)):
     admin = db.query(models.Admin).filter(models.Admin.id == username2).first()
 
     if admin and admin.passwd == password2:
         return RedirectResponse(url="/user-dashboard", status_code=303)
 
     return HTMLResponse(content="로그인 실패: 아이디 또는 비밀번호가 잘못되었습니다.", status_code=401)
-
-@app.get("/visitor-register", response_class=HTMLResponse)
-async def visitor_register_page(request: Request):
-    return templates.TemplateResponse("visitor_register.html", {"request": request})
 
 @app.post("/visitor-register")
 async def visitor_register(
@@ -93,9 +72,6 @@ async def visitor_register(
     db.refresh(new_visitor)
 
     return RedirectResponse(url="/user-dashboard", status_code=303)
-@app.get("/visitor-confirmation", response_class=HTMLResponse)
-async def visitor_confirmation_page(request: Request):
-    return templates.TemplateResponse("visitor_confirmation.html", {"request": request})
 
 @app.get("/user-dashboard/{user_id}", response_class=HTMLResponse)
 async def user_dashboard(user_id: int, request: Request, db: Session = Depends(database.get_db)):
@@ -109,7 +85,7 @@ async def user_dashboard(user_id: int, request: Request, db: Session = Depends(d
 async def admin_reject(uno: int, db: Session = Depends(database.get_db)):
     visitor = db.query(models.User).filter(models.User.uno == uno).first()
     if visitor:
-        visitor.status = "REJECTED"  # 거절 상태로 업데이트
+        visitor.status = "REJECTED"
         db.commit()
     return RedirectResponse(url="/admin-dashboard", status_code=303)
 
@@ -121,7 +97,6 @@ async def admin_dashboard(request: Request, db: Session = Depends(database.get_d
 
 @app.get("/user-dashboard", response_class=HTMLResponse)
 async def user_dashboard(request: Request, db: Session = Depends(database.get_db)):
-    # 모든 사용자 데이터를 조회
     visitors = db.query(models.User).all()
 
     return templates.TemplateResponse("user_dashboard.html", {"request": request, "visitors": visitors})
@@ -191,16 +166,13 @@ def save_graph_to_base64(fig):
 
 @app.post("/exit/{visitor_id}")
 async def log_exit(visitor_id: int, db: Session = Depends(database.get_db)):
-    print(f"[DEBUG] /exit/{visitor_id} 호출됨")
 
     visitor = db.query(models.User).filter(models.User.uno == visitor_id).first()
     if not visitor:
-        print("[DEBUG] 방문자를 찾을 수 없습니다.")
         raise HTTPException(status_code=404, detail="방문자를 찾을 수 없습니다.")
 
     admin = db.query(models.Admin).filter(models.Admin.ano == 1).first()
     if not admin:
-        print("[DEBUG] 관리자를 찾을 수 없습니다.")
         raise HTTPException(status_code=404, detail="관리자를 찾을 수 없습니다.")
 
     new_log = models.EntryExitLog(
@@ -216,7 +188,6 @@ async def log_exit(visitor_id: int, db: Session = Depends(database.get_db)):
     visitor.status = models.Status.EXIT
     db.commit()
 
-    print("[DEBUG] 퇴입 처리 완료")
     return JSONResponse(content={"success": True, "message": "퇴입 완료!"})
 
 def get_db():
@@ -234,19 +205,14 @@ async def approve_visitor(visitor_id: int, db: Session = Depends(get_db)):
         db.commit()
 
         send_approval_email_sync(visitor.email)
-        print(f"[DEBUG] 이메일 전송 완료")
 
         return JSONResponse(content={"message": "승인되었습니다."}, status_code=200)
     else:
-        print("[DEBUG] 방문자를 찾을 수 없습니다.")
         return JSONResponse(content={"message": "방문자를 찾을 수 없습니다."}, status_code=404)
 
 def send_approval_email_sync(receiver_email):
-    print('=>', 'hello')
     sender_email = "teereal@naver.com"
     sender_password = "WEDVPB9ZUMJF"
-
-    print(f"[DEBUG] 이메일 전송 함수 호출됨: 수신자 이메일 - {receiver_email}")
 
     subject = "승인 요청이 승인되었습니다"
     body = "당신의 방문 요청이 승인되었습니다. 감사합니다."
@@ -258,19 +224,11 @@ def send_approval_email_sync(receiver_email):
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        print(f"[DEBUG] SMTP 서버에 연결 시도 중...")
         server = smtplib.SMTP_SSL('smtp.naver.com', 465)
         server.login(sender_email, sender_password)
-        print(f"[DEBUG] SMTP 로그인 성공. 이메일 전송 시도 중...")
         server.sendmail(sender_email, receiver_email, msg.as_string())
         server.quit()
         print("이메일이 성공적으로 전송되었습니다.")
-    except smtplib.SMTPAuthenticationError as auth_error:
-        print(f"SMTP 인증 오류 발생: {auth_error}")
-    except smtplib.SMTPConnectError as connect_error:
-        print(f"SMTP 연결 오류 발생: {connect_error}")
-    except smtplib.SMTPException as smtp_error:
-        print(f"SMTP 오류 발생: {smtp_error}")
     except Exception as e:
         print(f"일반 오류 발생: {e}")
 
